@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400">
+  <defs>
+    <linearGradient id="markGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="65%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left Icon Mark (Squircle Badge) -->
+  <g transform="translate(40, 50)">
+    <rect width="300" height="300" rx="75" fill="url(#markGrad)"/>
+    <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" transform="scale(0.3) translate(0, 0)">
+      <circle cx="760" cy="240" r="54" fill="#ffffff" stroke="none"/>
+      <path d="M220 740V400L380 600L540 400V740" stroke-width="72"/>
+      <path d="M540 400H660C745 400 815 470 815 555C815 640 745 710 660 710H540" stroke-width="72"/>
+      <path d="M560 320L760 240" stroke-width="40" stroke-dasharray="40 28"/>
+    </g>
+  </g>
+
+  <!-- Typography: MY DUIT -->
+  <text x="390" y="215" font-family="system-ui, -apple-system, 'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="110" fill="url(#textGrad)" letter-spacing="-2">MY</text>
+  <text x="590" y="215" font-family="system-ui, -apple-system, 'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="110" fill="#10b981" letter-spacing="-2">DUIT</text>
+
+  <!-- Tagline & Badge -->
+  <g transform="translate(395, 255)">
+    <rect width="180" height="34" rx="17" fill="#10b981" fill-opacity="0.12"/>
+    <text x="18" y="22" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#059669" letter-spacing="1.5">AI FINANCIAL</text>
+    <text x="200" y="22" font-family="system-ui, -apple-system, sans-serif" font-weight="500" font-size="18" fill="#64748b" letter-spacing="0.5">Aplikasi Pengatur Keuangan &amp; Dompet</text>
+  </g>
+</svg>

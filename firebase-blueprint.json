@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with preferences and configuration",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "currency": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "theme": { "type": "string", "enum": ["light", "dark", "system"] },
+        "reminderEnabled": { "type": "boolean" },
+        "reminderTime": { "type": "string" }
+      },
+      "required": ["uid", "currency", "primaryColor", "theme"]
+    },
+    "Wallet": {
+      "title": "Wallet",
+      "description": "User wallet / financial source",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["cash", "bank", "ewallet", "saving", "other"] },
+        "balance": { "type": "number" },
+        "icon": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "name", "type", "balance", "color", "createdAt", "updatedAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Income, expense, or transfer transaction",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["expense", "income", "transfer"] },
+        "amount": { "type": "number" },
+        "categoryId": { "type": "string" },
+        "categoryName": { "type": "string" },
+        "walletId": { "type": "string" },
+        "walletName": { "type": "string" },
+        "toWalletId": { "type": "string" },
+        "toWalletName": { "type": "string" },
+        "date": { "type": "string" },
+        "note": { "type": "string" },
+        "receiptUrl": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "type", "amount", "categoryId", "categoryName", "walletId", "walletName", "date", "createdAt"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "Debt or receivable record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["debt", "receivable"] },
+        "personName": { "type": "string" },
+        "amount": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "dueDate": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["unpaid", "partial", "paid"] },
+        "payments": { "type": "array" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "type", "personName", "amount", "remainingAmount", "status", "createdAt", "updatedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Transaction category",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["expense", "income"] },
+        "icon": { "type": "string" },
+        "color": { "type": "string" },
+        "budgetMonthly": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "type", "icon", "color"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "User savings target and progress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "targetAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "deadline": { "type": "string" },
+        "emoji": { "type": "string" },
+        "color": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "title", "targetAmount", "currentAmount", "emoji", "color", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data"
+    },
+    "/wallets/{walletId}": {
+      "schema": "Wallet",
+      "description": "User financial wallets"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User financial transactions"
+    },
+    "/debts/{debtId}": {
+      "schema": "Debt",
+      "description": "Debts and receivables records"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Transaction categories"
+    },
+    "/savingsGoals/{goalId}": {
+      "schema": "SavingsGoal",
+      "description": "User savings targets and goals"
+    }
+  }
+}

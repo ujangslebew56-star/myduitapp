@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="markGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#10b981" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  
+  <!-- Group with glow and smooth rounded caps -->
+  <g fill="none" stroke="url(#markGrad)" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+    <!-- Ambient star / growth pulse node -->
+    <circle cx="780" cy="240" r="64" fill="url(#markGrad)" stroke="none"/>
+    <circle cx="780" cy="240" r="92" fill="#10b981" fill-opacity="0.18" stroke="none"/>
+
+    <!-- 'M' Monogram Vector (Financial pillars) -->
+    <path d="M200 740V380L370 600L540 380V740" stroke-width="72"/>
+
+    <!-- 'D' Monogram Vector (Vault & Expansion curve) -->
+    <path d="M540 380H680C770 380 844 454 844 544C844 634 770 708 680 708H540" stroke-width="72"/>
+
+    <!-- Growth indicator trajectory -->
+    <path d="M560 300L780 240" stroke-width="40" stroke-dasharray="46 32" stroke-opacity="0.85"/>
+  </g>
+</svg>

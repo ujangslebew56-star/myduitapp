@@ -1,0 +1,6 @@
+{
+  "name": "MY DUIT",
+  "description": "Aplikasi manajemen keuangan modern, pencatatan transaksi, dompet custom, hutang piutang, dan OCR scan struk belanja.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
