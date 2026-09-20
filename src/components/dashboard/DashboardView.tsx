@@ -15,155 +15,68 @@ import {
   deleteDoc
 } from '../../lib/firebase';
 import { Wallet, Transaction } from '../../types';
-import { formatCurrency, formatDateIndo, getCategoryEmoji, getWalletTypeEmoji } from '../../lib/constants';
+import { formatCurrency, formatDateIndo, getCategoryEmoji } from '../../lib/constants';
 import { WalletsSection } from '../wallets/WalletsSection';
 import { SavingsGoalSection } from '../savings/SavingsGoalSection';
+import { DebtsOverviewSection } from '../debts/DebtsOverviewSection';
 import { MonthlyBudgetCard } from '../budget/MonthlyBudgetCard';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { EditTransactionModal } from '../transactions/EditTransactionModal';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
-  Sparkles, 
-  Plus, 
-  Receipt, 
   ChevronRight, 
-  ChevronDown,
-  Palette,
+  Eye,
+  EyeOff,
   Table as TableIcon,
   LayoutList,
-  Check,
-  Trash2
+  Trash2,
+  Edit2,
+  Wallet as WalletIcon
 } from 'lucide-react';
-
-export const DASHBOARD_THEMES = [
-  { 
-    id: 'emerald', 
-    name: 'Emerald', 
-    hex: '#10B981', 
-    emoji: '🌿',
-    gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.5) 0%, #064e3b 45%, #022c22 100%)',
-    glow: '#10B981',
-    border: 'rgba(16, 185, 129, 0.5)',
-    badgeBg: 'rgba(16, 185, 129, 0.25)',
-    badgeText: '#6ee7b7'
-  },
-  { 
-    id: 'blue', 
-    name: 'Ocean', 
-    hex: '#3B82F6', 
-    emoji: '🌊',
-    gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.5) 0%, #1e3a8a 45%, #0f172a 100%)',
-    glow: '#3B82F6',
-    border: 'rgba(59, 130, 246, 0.5)',
-    badgeBg: 'rgba(59, 130, 246, 0.25)',
-    badgeText: '#93c5fd'
-  },
-  { 
-    id: 'purple', 
-    name: 'Violet', 
-    hex: '#8B5CF6', 
-    emoji: '🍇',
-    gradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5) 0%, #4c1d95 45%, #1e1b4b 100%)',
-    glow: '#8B5CF6',
-    border: 'rgba(139, 92, 246, 0.5)',
-    badgeBg: 'rgba(139, 92, 246, 0.25)',
-    badgeText: '#c4b5fd'
-  },
-  { 
-    id: 'amber', 
-    name: 'Amber', 
-    hex: '#F59E0B', 
-    emoji: '🍊',
-    gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.5) 0%, #78350f 45%, #1c1917 100%)',
-    glow: '#F59E0B',
-    border: 'rgba(245, 158, 11, 0.5)',
-    badgeBg: 'rgba(245, 158, 11, 0.25)',
-    badgeText: '#fde68a'
-  },
-  { 
-    id: 'rose', 
-    name: 'Rose', 
-    hex: '#EC4899', 
-    emoji: '🌹',
-    gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.5) 0%, #831843 45%, #1f1724 100%)',
-    glow: '#EC4899',
-    border: 'rgba(236, 72, 153, 0.5)',
-    badgeBg: 'rgba(236, 72, 153, 0.25)',
-    badgeText: '#fbcfe8'
-  },
-  { 
-    id: 'cyan', 
-    name: 'Cyan', 
-    hex: '#06B6D4', 
-    emoji: '🩵',
-    gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.5) 0%, #164e63 45%, #082f49 100%)',
-    glow: '#06B6D4',
-    border: 'rgba(6, 182, 212, 0.5)',
-    badgeBg: 'rgba(6, 182, 212, 0.25)',
-    badgeText: '#a5f3fc'
-  },
-  { 
-    id: 'slate', 
-    name: 'Slate', 
-    hex: '#475569', 
-    emoji: '🖤',
-    gradient: 'linear-gradient(135deg, rgba(71, 85, 105, 0.6) 0%, #1e293b 45%, #0f172a 100%)',
-    glow: '#64748b',
-    border: 'rgba(100, 116, 139, 0.5)',
-    badgeBg: 'rgba(100, 116, 139, 0.25)',
-    badgeText: '#cbd5e1'
-  },
-];
-
-export const TABLE_COLOR_OPTIONS = DASHBOARD_THEMES;
 
 interface DashboardViewProps {
   onOpenAddModal: () => void;
   onOpenScanner: () => void;
   onViewAllTransactions: () => void;
+  onViewAllDebts?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenAddModal,
   onOpenScanner,
   onViewAllTransactions,
+  onViewAllDebts = () => {},
 }) => {
   const { currentUser, userProfile, updateMonthlyBudget } = useAuth();
-  const { primaryColor, setPrimaryColor } = useTheme();
+  const { primaryColor } = useTheme();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Transaction Deletion State
+  // Toggle hide / show balance
+  const [showBalance, setShowBalance] = useState<boolean>(() => {
+    return localStorage.getItem('myduit_show_balance') !== 'false';
+  });
+
+  // Transaction Edit & Delete State
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Totals for the current month
+  // Totals for current month
   const [thisMonthIncome, setThisMonthIncome] = useState(0);
   const [thisMonthExpense, setThisMonthExpense] = useState(0);
 
-  // Dashboard Table Customization
-  const [tableColor, setTableColor] = useState<string>(() => {
-    return localStorage.getItem('myduit_dash_table_color') || primaryColor || '#10B981';
-  });
-  const [tableLayout, setTableLayout] = useState<'table' | 'cards'>(() => {
-    return (localStorage.getItem('myduit_dash_table_layout') as 'table' | 'cards') || 'table';
-  });
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  // Layout preference
+  const [tableLayout, setTableLayout] = useState<'table' | 'cards'>('cards');
 
-  const activeTheme = DASHBOARD_THEMES.find(
-    (t) => t.hex.toLowerCase() === tableColor.toLowerCase()
-  ) || DASHBOARD_THEMES[0];
-
-  const handleSelectColor = (hex: string) => {
-    setTableColor(hex);
-    localStorage.setItem('myduit_dash_table_color', hex);
-    setPrimaryColor(hex);
-  };
-
-  const handleSelectLayout = (layout: 'table' | 'cards') => {
-    setTableLayout(layout);
-    localStorage.setItem('myduit_dash_table_layout', layout);
+  const toggleShowBalance = () => {
+    setShowBalance((prev) => {
+      const next = !prev;
+      localStorage.setItem('myduit_show_balance', String(next));
+      return next;
+    });
   };
 
   const handleDeleteTransaction = async () => {
@@ -172,7 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setIsDeleting(true);
 
     try {
-      // 1. Safely revert source wallet balance
+      // 1. Revert wallet balance
       if (t.walletId) {
         try {
           const wRef = doc(db, 'wallets', t.walletId);
@@ -198,7 +111,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         }
       }
 
-      // 2. If transfer, safely revert destination wallet
+      // 2. If transfer, revert destination wallet
       if (t.type === 'transfer' && t.toWalletId) {
         try {
           const toRef = doc(db, 'wallets', t.toWalletId);
@@ -294,240 +207,129 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalAccumulatedBalance = wallets.reduce((acc, w) => acc + (Number(w.balance) || 0), 0);
 
   return (
-    <div className="space-y-5 pb-6">
-      {/* Welcome & Balance Hero Card with Dynamic Theme Palette */}
+    <div className="space-y-4 pb-6">
+      {/* 1. TOTAL SALDO CARD - Exact replica of design photo: Sleek card with subtle gradient background and eye toggle */}
       <div 
-        className="relative overflow-hidden rounded-3xl text-white p-5 sm:p-6 shadow-xl border transition-all duration-300"
+        className="relative p-5 rounded-3xl text-white shadow-lg overflow-hidden transition-all"
         style={{
-          background: activeTheme.gradient,
-          borderColor: activeTheme.border,
-          boxShadow: `0 16px 36px -10px ${activeTheme.hex}45`,
+          background: `linear-gradient(135deg, ${primaryColor} 0%, #064e3b 50%, #0f172a 100%)`,
         }}
       >
-        {/* Dynamic glowing ambient orbs */}
-        <div 
-          className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-3xl pointer-events-none transition-colors duration-500" 
-          style={{ backgroundColor: `${activeTheme.glow}40` }}
-        />
-        <div 
-          className="absolute -bottom-12 -left-12 w-44 h-44 rounded-full blur-2xl pointer-events-none transition-colors duration-500" 
-          style={{ backgroundColor: `${activeTheme.glow}30` }}
-        />
+        {/* Subtle decorative mesh background */}
+        <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -mb-6 -ml-6 w-24 h-24 rounded-full bg-black/20 blur-xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <span className="text-xs text-slate-300 font-medium">
-                Halo, {userProfile?.displayName || currentUser?.displayName || 'Sahabat'} 👋
+        <div className="relative z-10 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-white/15 flex items-center justify-center">
+                <WalletIcon className="w-3.5 h-3.5 text-white/90" />
+              </div>
+              <span className="text-xs font-semibold text-white/80 tracking-wide">
+                Total Saldo Keseluruhan
               </span>
-              <h1 
-                className="text-xs font-bold uppercase tracking-wider block mt-0.5 flex items-center gap-1.5"
-                style={{ color: activeTheme.badgeText }}
-              >
-                <span>💰</span>
-                <span>Total Akumulasi Saldo</span>
-              </h1>
             </div>
 
-            {/* Prominent Quick Theme Color Switcher Button */}
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                id="btn-switch-hero-theme"
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                className="px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95"
-                style={{
-                  backgroundColor: activeTheme.badgeBg,
-                  borderColor: activeTheme.border,
-                  color: '#ffffff',
-                }}
-                title="Ganti warna tema dashboard & total saldo"
-              >
-                <span>🎨</span>
-                <span className="font-semibold">{activeTheme.emoji} {activeTheme.name}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${showColorPicker ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={toggleShowBalance}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white/90 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-md transition-colors cursor-pointer"
+              title={showBalance ? 'Sembunyikan Saldo' : 'Tampilkan Saldo'}
+            >
+              {showBalance ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span className="text-[11px] font-medium">{showBalance ? 'Sembunyikan' : 'Tampilkan'}</span>
+            </button>
           </div>
 
-          <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white drop-shadow-xs">
-            {formatCurrency(totalAccumulatedBalance)}
+          {/* Big Crisp Typography */}
+          <div className="font-mono font-black text-3xl sm:text-4xl text-white tracking-tight">
+            {showBalance ? formatCurrency(totalAccumulatedBalance) : 'Rp ••••••••'}
           </div>
 
-          {/* Collapsible Color Theme Palette Selector */}
-          {showColorPicker && (
-            <div className="p-3 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 space-y-2 animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-white/90">
-                <span className="flex items-center gap-1.5">
-                  <span>🎨</span>
-                  <span>Pilih Warna Tema Dashboard & Saldo:</span>
-                </span>
-                <span className="text-[10px] text-white/60">7 Pilihan</span>
-              </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {DASHBOARD_THEMES.map((themeItem) => {
-                  const isSelected = activeTheme.id === themeItem.id;
-                  return (
-                    <button
-                      key={themeItem.id}
-                      type="button"
-                      onClick={() => handleSelectColor(themeItem.hex)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        isSelected
-                          ? 'ring-2 ring-white shadow-md scale-105 bg-white/20'
-                          : 'bg-black/30 hover:bg-white/10'
-                      }`}
-                      style={{
-                        borderColor: themeItem.hex,
-                        color: isSelected ? '#ffffff' : themeItem.badgeText,
-                      }}
-                    >
-                      <span>{themeItem.emoji}</span>
-                      <span>{themeItem.name}</span>
-                      {isSelected && <Check className="w-3 h-3 text-white ml-0.5" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Monthly In & Out Pills */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
-            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <div className="flex items-center gap-1.5 text-emerald-300 text-[11px] font-bold mb-0.5">
+          {/* In & Out Chips */}
+          <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-white/15">
+            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <div className="flex items-center gap-1 text-emerald-300 text-[11px] font-semibold mb-0.5">
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>📈 Pemasukan Bulan Ini</span>
+                <span>Pemasukan Bulan Ini</span>
               </div>
-              <div className="font-mono font-bold text-sm text-white">
-                {formatCurrency(thisMonthIncome)}
+              <div className="font-mono font-bold text-xs sm:text-sm text-white">
+                {showBalance ? `+${formatCurrency(thisMonthIncome)}` : '••••••'}
               </div>
             </div>
 
-            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/10">
-              <div className="flex items-center gap-1.5 text-rose-300 text-[11px] font-bold mb-0.5">
+            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10">
+              <div className="flex items-center gap-1 text-rose-300 text-[11px] font-semibold mb-0.5">
                 <ArrowDownRight className="w-3.5 h-3.5" />
-                <span>📉 Pengeluaran Bulan Ini</span>
+                <span>Pengeluaran Bulan Ini</span>
               </div>
-              <div className="font-mono font-bold text-sm text-white">
-                {formatCurrency(thisMonthExpense)}
+              <div className="font-mono font-bold text-xs sm:text-sm text-white">
+                {showBalance ? `-${formatCurrency(thisMonthExpense)}` : '••••••'}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions (Smart OCR Scan & Add Manual) */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          id="btn-quick-ocr-scan"
-          onClick={onOpenScanner}
-          className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 hover:border-emerald-400 text-left transition-all group cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
-        >
-          <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-xs">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <strong className="block text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1">
-            <span>📸 Smart Scan Struk</span>
-            <span>✨</span>
-          </strong>
-          <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
-            Deteksi struk instan AI
-          </span>
-        </button>
+      {/* 2. DOMPET SAYA (Horizontal Carousel with Edit & Delete on Cards) */}
+      <WalletsSection />
 
-        <button
-          type="button"
-          id="btn-quick-add-tx"
-          onClick={onOpenAddModal}
-          className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-400 text-left transition-all group cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98]"
-        >
-          <div className="w-9 h-9 rounded-xl bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-xs">
-            <Plus className="w-4 h-4" />
-          </div>
-          <strong className="block text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
-            <span>✍️ Input Transaksi</span>
-            <span>⚡</span>
-          </strong>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400">
-            Pemasukan, keluar & transfer
-          </span>
-        </button>
-      </div>
-
-      {/* Fitur Pengaturan Anggaran Bulanan dengan Progress Bar */}
+      {/* 3. ANGGARAN BULANAN (Progress Bar) */}
       <MonthlyBudgetCard
         monthlyBudget={Number(userProfile?.monthlyBudget) || 0}
         currentExpense={thisMonthExpense}
         onUpdateBudget={updateMonthlyBudget}
       />
 
-      {/* Target Tabungan & Impian dengan Progress Bar */}
+      {/* 4. TARGET IMPIAN & TABUNGAN (Progress Bar) */}
       <SavingsGoalSection />
 
-      {/* Customizable Wallets Carousel */}
-      <WalletsSection />
+      {/* 5. CATATAN HUTANG & PIUTANG */}
+      <DebtsOverviewSection onViewAllDebts={onViewAllDebts} />
 
-      {/* Recent Transactions Section with Customizable Table Theme Color */}
-      <div className="space-y-3">
+      {/* 6. TRANSAKSI TERAKHIR (Clean List with Category Emojis, Edit ✏️ & Delete 🗑️) */}
+      <div className="space-y-3 pt-1">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <span>🕒</span>
-            <span>Transaksi Terakhir</span>
-          </h2>
-
           <div className="flex items-center gap-1.5">
-            {/* Toggle Table Color Picker */}
-            <button
-              type="button"
-              id="btn-toggle-table-color"
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs"
-              style={{
-                backgroundColor: `${tableColor}15`,
-                borderColor: `${tableColor}50`,
-                color: tableColor,
-              }}
-              title="Ubah warna tema tabel dashboard"
-            >
-              <Palette className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline text-[11px]">Warna Tabel</span>
-            </button>
+            <span className="text-base">🕒</span>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Transaksi Terakhir
+            </h2>
+          </div>
 
-            {/* Layout Toggle (Table vs Cards) */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60">
               <button
                 type="button"
-                onClick={() => handleSelectLayout('table')}
-                className={`p-1 rounded-lg transition-colors cursor-pointer ${
-                  tableLayout === 'table'
-                    ? 'bg-white dark:bg-slate-700 shadow-2xs text-slate-800 dark:text-white font-bold'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-                title="Tampilan Tabel"
-              >
-                <TableIcon className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectLayout('cards')}
-                className={`p-1 rounded-lg transition-colors cursor-pointer ${
+                onClick={() => setTableLayout('cards')}
+                className={`p-1 rounded-md text-xs transition-all ${
                   tableLayout === 'cards'
-                    ? 'bg-white dark:bg-slate-700 shadow-2xs text-slate-800 dark:text-white font-bold'
+                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-2xs font-bold'
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
-                title="Tampilan Kartu"
+                title="Tampilan Kartu Bersih"
               >
                 <LayoutList className="w-3.5 h-3.5" />
               </button>
+              <button
+                type="button"
+                onClick={() => setTableLayout('table')}
+                className={`p-1 rounded-md text-xs transition-all ${
+                  tableLayout === 'table'
+                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-2xs font-bold'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+                title="Tampilan Tabel Rapi"
+              >
+                <TableIcon className="w-3.5 h-3.5" />
+              </button>
             </div>
 
-            {/* View All */}
             <button
               type="button"
+              id="btn-view-all-transactions"
               onClick={onViewAllTransactions}
-              className="flex items-center gap-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 cursor-pointer pl-1"
+              className="flex items-center gap-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
             >
               <span>Semua</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -535,93 +337,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Color Palette Selector Panel (Collapsible) */}
-        {showColorPicker && (
-          <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-2 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 font-medium">
-              <span className="flex items-center gap-1.5 font-semibold">
-                <span>🎨</span>
-                <span>Pilih Warna Aksen Tabel:</span>
-              </span>
-              <span className="text-[10px] text-slate-400">Tersimpan otomatis</span>
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {TABLE_COLOR_OPTIONS.map((item) => {
-                const isSelected = tableColor.toLowerCase() === item.hex.toLowerCase();
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleSelectColor(item.hex)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                      isSelected
-                        ? 'ring-2 ring-offset-1 dark:ring-offset-slate-900 shadow-xs scale-105'
-                        : 'opacity-80 hover:opacity-100'
-                    }`}
-                    style={{
-                      borderColor: item.hex,
-                      backgroundColor: isSelected ? `${item.hex}25` : 'transparent',
-                      color: item.hex,
-                    }}
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full shrink-0 flex items-center justify-center text-white"
-                      style={{ backgroundColor: item.hex }}
-                    >
-                      {isSelected && <Check className="w-2 h-2 stroke-[3]" />}
-                    </span>
-                    <span>{item.emoji}</span>
-                    <span>{item.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Transactions Display */}
         {recentTransactions.length === 0 ? (
           <div className="py-8 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 text-center p-4">
-            <Receipt className="w-7 h-7 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+            <span className="text-2xl block mb-1">🍃</span>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">
-              🍃 Belum ada transaksi bulan ini
+              Belum ada transaksi bulan ini
             </span>
             <span className="text-[11px] text-slate-400">
-              Yuk mulai catat pengeluaran Anda hari ini! ✨
+              Tekan tombol (+) di tengah bawah untuk mencatat pengeluaran ✨
             </span>
           </div>
         ) : tableLayout === 'table' ? (
-          /* Modern Themed Table Layout */
-          <div 
-            className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border shadow-2xs transition-colors"
-            style={{ borderColor: `${tableColor}35` }}
-          >
-            <div 
-              className="grid grid-cols-12 px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider border-b"
-              style={{ 
-                backgroundColor: `${tableColor}12`, 
-                borderColor: `${tableColor}25`,
-                color: tableColor 
-              }}
-            >
-              <div className="col-span-5 flex items-center gap-1">
-                <span>🏷️</span>
-                <span>Kategori & Tanggal</span>
-              </div>
-              <div className="col-span-3 text-left flex items-center gap-1">
-                <span>💳</span>
-                <span>Dompet</span>
-              </div>
-              <div className="col-span-3 text-right flex items-center justify-end gap-1">
-                <span>💰</span>
-                <span>Nominal</span>
-              </div>
-              <div className="col-span-1 text-center">
-                <span>⚙️</span>
-              </div>
+          /* Clean Minimalist Table */
+          <div className="overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+            <div className="grid grid-cols-12 px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+              <div className="col-span-5">Keterangan</div>
+              <div className="col-span-3">Dompet</div>
+              <div className="col-span-2 text-right">Nominal</div>
+              <div className="col-span-2 text-center">Aksi</div>
             </div>
 
-            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {recentTransactions.map((tx) => {
                 const isExp = tx.type === 'expense';
                 const isInc = tx.type === 'income';
@@ -632,25 +369,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     key={tx.id}
                     className="grid grid-cols-12 px-3.5 py-2.5 items-center hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    <div className="col-span-5 flex items-center gap-2.5 min-w-0 pr-2">
-                      <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm shadow-2xs ${
-                          isExp
-                            ? 'bg-rose-50 dark:bg-rose-950/50'
-                            : isInc
-                            ? 'bg-emerald-50 dark:bg-emerald-950/50'
-                            : 'bg-blue-50 dark:bg-blue-950/50'
-                        }`}
-                      >
-                        {catEmoji}
-                      </div>
-
+                    <div className="col-span-5 flex items-center gap-2 min-w-0 pr-1">
+                      <span className="text-sm shrink-0">{catEmoji}</span>
                       <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                        <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">
                           {tx.categoryName}
                         </div>
                         <div className="text-[10px] text-slate-400 truncate">
-                          🗓️ {formatDateIndo(tx.date)}
+                          {formatDateIndo(tx.date)}
                         </div>
                       </div>
                     </div>
@@ -661,7 +387,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="col-span-3 text-right">
+                    <div className="col-span-2 text-right">
                       <div
                         className={`font-mono font-bold text-xs ${
                           isExp
@@ -676,12 +402,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="col-span-1 text-center flex items-center justify-center">
+                    <div className="col-span-2 flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTransaction(tx)}
+                        className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+                        title="Edit Transaksi"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => setTransactionToDelete(tx)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-                        title="Hapus Transaksi Ini"
+                        className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                        title="Hapus Transaksi"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -692,7 +426,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
         ) : (
-          /* Card View Layout */
+          /* Clean Minimalist Cards */
           <div className="space-y-2">
             {recentTransactions.map((tx) => {
               const isExp = tx.type === 'expense';
@@ -702,16 +436,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               return (
                 <div
                   key={tx.id}
-                  className="p-3 bg-white dark:bg-slate-900 rounded-2xl border shadow-2xs flex items-center justify-between transition-colors"
-                  style={{ 
-                    borderLeftColor: tableColor, 
-                    borderLeftWidth: '3.5px',
-                    borderColor: `${tableColor}25`
-                  }}
+                  className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base ${
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-base shadow-2xs ${
                         isExp
                           ? 'bg-rose-50 dark:bg-rose-950/50'
                           : isInc
@@ -726,16 +455,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
                         {tx.categoryName}
                       </div>
-                      <div className="text-[11px] text-slate-400 truncate">
-                        🗓️ {formatDateIndo(tx.date)} • 💳 {tx.walletName}
+                      <div className="text-[11px] text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
+                        <span>{formatDateIndo(tx.date)}</span>
+                        <span>•</span>
+                        <span>{tx.walletName}</span>
+                        {tx.toWalletName && <span> ➔ {tx.toWalletName}</span>}
                       </div>
+                      {tx.note && (
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 italic truncate mt-0.5">
+                          "{tx.note}"
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     <div className="text-right">
                       <div
-                        className={`font-mono font-bold text-xs ${
+                        className={`font-mono font-bold text-xs sm:text-sm ${
                           isExp
                             ? 'text-rose-600 dark:text-rose-400'
                             : isInc
@@ -748,14 +485,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setTransactionToDelete(tx)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-                      title="Hapus Transaksi"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTransaction(tx)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+                        title="Edit Transaksi"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTransactionToDelete(tx)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                        title="Hapus Transaksi"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -764,7 +511,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
-      {/* Confirmation Modal for Transaction Deletion */}
+      {/* Modal Edit Transaksi */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTransaction)}
+        transaction={editingTransaction}
+        onClose={() => setEditingTransaction(null)}
+      />
+
+      {/* Modal Konfirmasi Hapus Transaksi */}
       <ConfirmModal
         isOpen={Boolean(transactionToDelete)}
         title="Hapus Transaksi?"

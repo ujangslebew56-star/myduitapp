@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { Logo } from '../ui/Logo';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Sun, Moon, Sparkles, RotateCw } from 'lucide-react';
+import { Bell, Sun, Moon, RotateCw } from 'lucide-react';
 import { TabType } from './BottomNav';
 
 interface HeaderProps {
-  onOpenScanner: () => void;
+  onOpenScanner?: () => void;
   onOpenProfile: () => void;
+  onOpenNotifications: () => void;
   activeTab: TabType;
+  unreadCount?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
-  onOpenScanner, 
   onOpenProfile, 
+  onOpenNotifications,
+  unreadCount = 0,
 }) => {
   const { userProfile, currentUser } = useAuth();
   const { theme, toggleTheme, primaryColor } = useTheme();
@@ -37,42 +39,66 @@ export const Header: React.FC<HeaderProps> = ({
     }, 250);
   };
 
+  const displayName = userProfile?.displayName || currentUser?.displayName || 'Ujang';
+  const firstName = displayName.split(' ')[0] || 'Ujang';
+
   return (
-    <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 transition-colors">
-      <div className="max-w-md mx-auto px-4 py-2.5 flex items-center justify-between">
-        <Logo size="sm" />
+    <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 transition-colors">
+      <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Left: Avatar + Warm Greeting matching Design Photo */}
+        <div 
+          onClick={onOpenProfile}
+          className="flex items-center gap-3 cursor-pointer group"
+          title="Buka Profil Pengguna"
+        >
+          <div className="relative">
+            <div
+              className="w-10 h-10 rounded-full border-2 border-white dark:border-slate-800 shadow-xs overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:scale-105 transition-transform"
+            >
+              {userProfile?.photoURL || currentUser?.photoURL ? (
+                <img
+                  src={userProfile?.photoURL || currentUser?.photoURL || ''}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-full h-full text-white font-bold text-sm flex items-center justify-center uppercase"
+                  style={{
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, #0f172a 100%)`,
+                  }}
+                >
+                  {firstName[0]}
+                </div>
+              )}
+            </div>
+            {/* Active Online Indicator */}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+          </div>
 
+          <div>
+            <div className="text-[11px] text-slate-400 font-medium">Selamat datang,</div>
+            <div className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1 leading-tight">
+              <span>Halo, {firstName}</span>
+              <span className="text-base">👋</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Clean Action Icons matching Design Photo */}
         <div className="flex items-center gap-1.5">
-          {/* Smart Scan Quick Launcher */}
-          <button
-            type="button"
-            id="btn-header-scan-ocr"
-            onClick={onOpenScanner}
-            className="flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-semibold border transition-all active:scale-95 cursor-pointer shadow-2xs"
-            style={{
-              backgroundColor: `${primaryColor}12`,
-              color: primaryColor,
-              borderColor: `${primaryColor}30`,
-            }}
-            title="Scan Struk dengan AI"
-          >
-            <Sparkles className="w-3.5 h-3.5" style={{ color: primaryColor }} />
-            <span className="hidden xs:inline text-[11px] font-medium tracking-tight">Scan AI</span>
-          </button>
-
-          {/* Quick Refresh / Cache Buster Button */}
+          {/* Refresh Data */}
           <button
             type="button"
             id="btn-header-hard-refresh"
             onClick={handleHardRefresh}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer active:scale-90"
-            title="Segarkan Tampilan & Bersihkan Cache Versi Terbaru"
-            aria-label="Refresh and Clear Cache"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            title="Segarkan Data"
           >
             <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-500' : ''}`} />
           </button>
 
-          {/* Theme Toggle Button */}
+          {/* Theme Mode Switcher */}
           <button
             type="button"
             id="btn-toggle-theme"
@@ -83,31 +109,17 @@ export const Header: React.FC<HeaderProps> = ({
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
           </button>
 
-          {/* User Profile Avatar */}
+          {/* Functional Notification Bell */}
           <button
             type="button"
-            id="btn-header-profile"
-            onClick={onOpenProfile}
-            className="w-8 h-8 rounded-full border overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:ring-2 transition-all cursor-pointer shrink-0 shadow-2xs"
-            style={{
-              borderColor: `${primaryColor}40`,
-            }}
+            id="btn-header-bell"
+            onClick={onOpenNotifications}
+            className="w-9 h-9 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 shadow-2xs hover:shadow-xs transition-all cursor-pointer relative"
+            title="Buka Notifikasi & Pengingat"
           >
-            {userProfile?.photoURL || currentUser?.photoURL ? (
-              <img
-                src={userProfile?.photoURL || currentUser?.photoURL || ''}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div
-                className="w-full h-full text-white font-bold text-xs flex items-center justify-center uppercase"
-                style={{
-                  background: `linear-gradient(135deg, ${primaryColor} 0%, #0f172a 100%)`,
-                }}
-              >
-                {(userProfile?.displayName || currentUser?.displayName || currentUser?.email || 'U')[0]}
-              </div>
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
             )}
           </button>
         </div>
@@ -115,4 +127,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

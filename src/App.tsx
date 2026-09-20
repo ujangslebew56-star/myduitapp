@@ -1,12 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { AuthModal } from './components/auth/AuthModal';
+import { ThemeProvider } from './context/ThemeContext';
 import { Header } from './components/navigation/Header';
 import { BottomNav, TabType } from './components/navigation/BottomNav';
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -16,8 +10,11 @@ import { ReportsView } from './components/analytics/ReportsView';
 import { AddTransactionModal } from './components/transactions/AddTransactionModal';
 import { ReceiptScannerModal } from './components/ocr/ReceiptScannerModal';
 import { ProfileModal } from './components/auth/ProfileModal';
+import { NotificationsModal } from './components/notifications/NotificationsModal';
+import { AuthModal } from './components/auth/AuthModal';
 import { OCRScanResult } from './types';
 import { Loader2 } from 'lucide-react';
+import { db, collection, query, where, onSnapshot } from './lib/firebase';
 
 const MainApp: React.FC = () => {
   const { currentUser, loading } = useAuth();
@@ -27,9 +24,39 @@ const MainApp: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Scanned draft pass-through
   const [scannedData, setScannedData] = useState<{ result: OCRScanResult; receiptUrl?: string } | null>(null);
+
+  // Check urgent unread notifications count for header badge
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const qDebts = query(collection(db, 'debts'), where('userId', '==', currentUser.uid));
+    const unsub = onSnapshot(
+      qDebts, 
+      (snap) => {
+        let count = 0;
+        const now = new Date();
+        snap.forEach((d) => {
+          const debt = d.data();
+          if (debt.status !== 'paid' && debt.dueDate) {
+            const due = new Date(debt.dueDate);
+            const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 3) count++;
+          }
+        });
+        setUnreadCount(count);
+      },
+      (error) => {
+        console.warn('Notice querying debts count:', error);
+      }
+    );
+
+    return () => unsub();
+  }, [currentUser]);
 
   if (loading) {
     return (
@@ -60,8 +87,9 @@ const MainApp: React.FC = () => {
       {/* Mobile-first sticky top bar */}
       <Header
         activeTab={activeTab}
-        onOpenScanner={() => setIsScannerOpen(true)}
         onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenNotifications={() => setIsNotifOpen(true)}
+        unreadCount={unreadCount}
       />
 
       {/* Main View Container */}
@@ -71,6 +99,7 @@ const MainApp: React.FC = () => {
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onOpenScanner={() => setIsScannerOpen(true)}
             onViewAllTransactions={() => setActiveTab('history')}
+            onViewAllDebts={() => setActiveTab('debts')}
           />
         )}
 
@@ -107,6 +136,14 @@ const MainApp: React.FC = () => {
       <ProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+      />
+
+      {/* Notifications & Reminders Modal */}
+      <NotificationsModal
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+        onNavigateToDebts={() => setActiveTab('debts')}
+        onNavigateToReports={() => setActiveTab('reports')}
       />
     </div>
   );

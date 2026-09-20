@@ -17,11 +17,13 @@ import {
 import { Transaction, Wallet } from '../../types';
 import { formatCurrency, formatDateIndo, getCategoryEmoji } from '../../lib/constants';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { EditTransactionModal } from './EditTransactionModal';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
   ArrowLeftRight, 
   Trash2, 
+  Edit2,
   Receipt, 
   Search, 
   Filter, 
@@ -40,7 +42,8 @@ export const TransactionHistoryView: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'all' | 'expense' | 'income' | 'transfer'>('all');
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
 
-  // In-app deletion state
+  // Edit & Delete state
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -307,20 +310,38 @@ export const TransactionHistoryView: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePrompt(tx)}
-                    className="p-2 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
-                    title="Hapus Transaksi"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingTransaction(tx)}
+                      className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-xl text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                      title="Edit Transaksi"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeletePrompt(tx)}
+                      className="p-2 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                      title="Hapus Transaksi"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Edit Transaction Modal */}
+      <EditTransactionModal
+        isOpen={Boolean(editingTransaction)}
+        transaction={editingTransaction}
+        onClose={() => setEditingTransaction(null)}
+      />
 
       {/* Delete Confirmation In-App Modal */}
       <ConfirmModal
