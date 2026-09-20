@@ -83,6 +83,15 @@ export interface UserProfile {
   fontFamily?: string;
   reminderEnabled: boolean;
   reminderTime?: string;
+  monthlyBudget?: number; // User defined monthly spending limit
+}
+
+export interface MonthlyBudget {
+  id?: string;
+  userId: string;
+  monthYear: string; // e.g. "2026-09"
+  limitAmount: number;
+  updatedAt: number;
 }
 
 export interface OCRScanResult {

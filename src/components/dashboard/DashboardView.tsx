@@ -1,11 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { db, collection, query, where, onSnapshot, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { 
+  db, 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  handleFirestoreError, 
+  OperationType,
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc
+} from '../../lib/firebase';
 import { Wallet, Transaction } from '../../types';
 import { formatCurrency, formatDateIndo, getCategoryEmoji, getWalletTypeEmoji } from '../../lib/constants';
 import { WalletsSection } from '../wallets/WalletsSection';
 import { SavingsGoalSection } from '../savings/SavingsGoalSection';
+import { MonthlyBudgetCard } from '../budget/MonthlyBudgetCard';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
@@ -17,7 +31,8 @@ import {
   Palette,
   Table as TableIcon,
   LayoutList,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 
 export const DASHBOARD_THEMES = [
@@ -113,11 +128,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenScanner,
   onViewAllTransactions,
 }) => {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, updateMonthlyBudget } = useAuth();
   const { primaryColor, setPrimaryColor } = useTheme();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Transaction Deletion State
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Totals for the current month
   const [thisMonthIncome, setThisMonthIncome] = useState(0);
@@ -145,6 +164,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const handleSelectLayout = (layout: 'table' | 'cards') => {
     setTableLayout(layout);
     localStorage.setItem('myduit_dash_table_layout', layout);
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete) return;
+    const t = transactionToDelete;
+    setIsDeleting(true);
+
+    try {
+      // 1. Safely revert source wallet balance
+      if (t.walletId) {
+        try {
+          const wRef = doc(db, 'wallets', t.walletId);
+          const wSnap = await getDoc(wRef);
+          if (wSnap.exists()) {
+            const wData = wSnap.data();
+            const curBal = Number(wData.balance) || 0;
+            const revertedBal =
+              t.type === 'expense'
+                ? curBal + Number(t.amount)
+                : t.type === 'income'
+                ? curBal - Number(t.amount)
+                : curBal + Number(t.amount);
+
+            await updateDoc(wRef, {
+              balance: revertedBal,
+              updatedAt: Date.now(),
+              userId: wData.userId || currentUser?.uid,
+            });
+          }
+        } catch (wErr) {
+          console.warn('Reverting wallet balance notice:', wErr);
+        }
+      }
+
+      // 2. If transfer, safely revert destination wallet
+      if (t.type === 'transfer' && t.toWalletId) {
+        try {
+          const toRef = doc(db, 'wallets', t.toWalletId);
+          const toSnap = await getDoc(toRef);
+          if (toSnap.exists()) {
+            const toData = toSnap.data();
+            const toBal = Number(toData.balance) || 0;
+            await updateDoc(toRef, {
+              balance: toBal - Number(t.amount),
+              updatedAt: Date.now(),
+              userId: toData.userId || currentUser?.uid,
+            });
+          }
+        } catch (toErr) {
+          console.warn('Reverting destination wallet notice:', toErr);
+        }
+      }
+
+      // 3. Delete document from Firestore
+      await deleteDoc(doc(db, 'transactions', t.id));
+
+      // 4. Update local state immediately
+      setRecentTransactions((prev) => prev.filter((item) => item.id !== t.id));
+      setTransactionToDelete(null);
+    } catch (err: any) {
+      console.error('Delete transaction failed:', err);
+      alert('Gagal menghapus transaksi: ' + (err?.message || 'Silakan coba lagi'));
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -372,6 +456,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
+      {/* Fitur Pengaturan Anggaran Bulanan dengan Progress Bar */}
+      <MonthlyBudgetCard
+        monthlyBudget={Number(userProfile?.monthlyBudget) || 0}
+        currentExpense={thisMonthExpense}
+        onUpdateBudget={updateMonthlyBudget}
+      />
+
       {/* Target Tabungan & Impian dengan Progress Bar */}
       <SavingsGoalSection />
 
@@ -513,7 +604,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 color: tableColor 
               }}
             >
-              <div className="col-span-6 flex items-center gap-1">
+              <div className="col-span-5 flex items-center gap-1">
                 <span>🏷️</span>
                 <span>Kategori & Tanggal</span>
               </div>
@@ -524,6 +615,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="col-span-3 text-right flex items-center justify-end gap-1">
                 <span>💰</span>
                 <span>Nominal</span>
+              </div>
+              <div className="col-span-1 text-center">
+                <span>⚙️</span>
               </div>
             </div>
 
@@ -538,7 +632,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     key={tx.id}
                     className="grid grid-cols-12 px-3.5 py-2.5 items-center hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    <div className="col-span-6 flex items-center gap-2.5 min-w-0 pr-2">
+                    <div className="col-span-5 flex items-center gap-2.5 min-w-0 pr-2">
                       <div
                         className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-sm shadow-2xs ${
                           isExp
@@ -580,6 +674,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {isExp ? '-' : isInc ? '+' : ''}
                         {formatCurrency(tx.amount)}
                       </div>
+                    </div>
+
+                    <div className="col-span-1 text-center flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setTransactionToDelete(tx)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                        title="Hapus Transaksi Ini"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -627,19 +732,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0 ml-2">
-                    <div
-                      className={`font-mono font-bold text-xs ${
-                        isExp
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : isInc
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-blue-600 dark:text-blue-400'
-                      }`}
-                    >
-                      {isExp ? '-' : isInc ? '+' : ''}
-                      {formatCurrency(tx.amount)}
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <div className="text-right">
+                      <div
+                        className={`font-mono font-bold text-xs ${
+                          isExp
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : isInc
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        }`}
+                      >
+                        {isExp ? '-' : isInc ? '+' : ''}
+                        {formatCurrency(tx.amount)}
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setTransactionToDelete(tx)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                      title="Hapus Transaksi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               );
@@ -647,6 +763,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal for Transaction Deletion */}
+      <ConfirmModal
+        isOpen={Boolean(transactionToDelete)}
+        title="Hapus Transaksi?"
+        message={`Apakah Anda yakin ingin menghapus transaksi "${transactionToDelete?.categoryName}" sebesar ${
+          transactionToDelete ? formatCurrency(transactionToDelete.amount) : ''
+        }? Saldo dompet "${transactionToDelete?.walletName}" akan otomatis disesuaikan kembali.`}
+        confirmText={isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+        cancelText="Batal"
+        isDanger={true}
+        onConfirm={handleDeleteTransaction}
+        onCancel={() => setTransactionToDelete(null)}
+      />
     </div>
   );
 };

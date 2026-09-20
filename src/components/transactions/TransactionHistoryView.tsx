@@ -115,35 +115,63 @@ export const TransactionHistoryView: React.FC = () => {
     if (!transactionToDelete) return;
     const t = transactionToDelete;
     setIsDeleting(true);
-    try {
-      // Revert wallet balance
-      const wRef = doc(db, 'wallets', t.walletId);
-      const wSnap = await getDoc(wRef);
-      if (wSnap.exists()) {
-        const curBal = Number(wSnap.data().balance) || 0;
-        const revertedBal =
-          t.type === 'expense'
-            ? curBal + Number(t.amount)
-            : t.type === 'income'
-            ? curBal - Number(t.amount)
-            : curBal + Number(t.amount); // for transfer source
-        await updateDoc(wRef, { balance: revertedBal, updatedAt: Date.now() });
-      }
 
-      // If transfer, revert target wallet too
-      if (t.type === 'transfer' && t.toWalletId) {
-        const toRef = doc(db, 'wallets', t.toWalletId);
-        const toSnap = await getDoc(toRef);
-        if (toSnap.exists()) {
-          const toBal = Number(toSnap.data().balance) || 0;
-          await updateDoc(toRef, { balance: toBal - Number(t.amount), updatedAt: Date.now() });
+    try {
+      // 1. Safely attempt to revert source wallet balance without blocking deletion
+      if (t.walletId) {
+        try {
+          const wRef = doc(db, 'wallets', t.walletId);
+          const wSnap = await getDoc(wRef);
+          if (wSnap.exists()) {
+            const wData = wSnap.data();
+            const curBal = Number(wData.balance) || 0;
+            const revertedBal =
+              t.type === 'expense'
+                ? curBal + Number(t.amount)
+                : t.type === 'income'
+                ? curBal - Number(t.amount)
+                : curBal + Number(t.amount); // for transfer source
+
+            await updateDoc(wRef, {
+              balance: revertedBal,
+              updatedAt: Date.now(),
+              userId: wData.userId || currentUser?.uid,
+            });
+          }
+        } catch (wErr) {
+          console.warn('Reverting wallet balance notice (proceeding with deletion):', wErr);
         }
       }
 
+      // 2. If transfer, safely attempt to revert target wallet
+      if (t.type === 'transfer' && t.toWalletId) {
+        try {
+          const toRef = doc(db, 'wallets', t.toWalletId);
+          const toSnap = await getDoc(toRef);
+          if (toSnap.exists()) {
+            const toData = toSnap.data();
+            const toBal = Number(toData.balance) || 0;
+            await updateDoc(toRef, {
+              balance: toBal - Number(t.amount),
+              updatedAt: Date.now(),
+              userId: toData.userId || currentUser?.uid,
+            });
+          }
+        } catch (toErr) {
+          console.warn('Reverting transfer target wallet notice:', toErr);
+        }
+      }
+
+      // 3. Delete the transaction record from Firestore
       await deleteDoc(doc(db, 'transactions', t.id));
+
+      // 4. Immediately update local states for instant visual confirmation
+      setTransactions((prev) => prev.filter((item) => item.id !== t.id));
+      setFilteredTransactions((prev) => prev.filter((item) => item.id !== t.id));
       setTransactionToDelete(null);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Delete transaction failed:', err);
+      alert('Gagal menghapus transaksi: ' + (err?.message || 'Silakan coba beberapa saat lagi'));
     } finally {
       setIsDeleting(false);
     }

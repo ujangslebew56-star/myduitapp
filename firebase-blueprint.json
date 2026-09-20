@@ -13,9 +13,22 @@
         "primaryColor": { "type": "string" },
         "theme": { "type": "string", "enum": ["light", "dark", "system"] },
         "reminderEnabled": { "type": "boolean" },
-        "reminderTime": { "type": "string" }
+        "reminderTime": { "type": "string" },
+        "monthlyBudget": { "type": "number" }
       },
       "required": ["uid", "currency", "primaryColor", "theme"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "User monthly spending budget target",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "monthYear": { "type": "string" },
+        "limitAmount": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "monthYear", "limitAmount", "updatedAt"]
     },
     "Wallet": {
       "title": "Wallet",

@@ -33,6 +33,7 @@ interface AuthContextType {
   updateThemePreference: (theme: 'light' | 'dark' | 'system') => Promise<void>;
   updateFontPreference: (font: string) => Promise<void>;
   updateProfileData: (name: string, photoURL?: string) => Promise<void>;
+  updateMonthlyBudget: (budget: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -247,6 +248,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateMonthlyBudget = async (budget: number) => {
+    const validBudget = Math.max(0, Math.round(Number(budget) || 0));
+    setUserProfile((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, monthlyBudget: validBudget };
+      localStorage.setItem('my_duit_profile', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (!currentUser) return;
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, { monthlyBudget: validBudget, updatedAt: Date.now() }, { merge: true });
+
+      // Also persist to current month budget document for historical recording
+      const now = new Date();
+      const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const budgetDocId = `${currentUser.uid}_${monthYear}`;
+      const budgetRef = doc(db, 'budgets', budgetDocId);
+      await setDoc(
+        budgetRef,
+        {
+          userId: currentUser.uid,
+          monthYear,
+          amount: validBudget,
+          updatedAt: Date.now(),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn('Sync monthly budget to cloud deferred:', err);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -261,7 +296,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatePrimaryColor,
         updateThemePreference,
         updateFontPreference,
-        updateProfileData
+        updateProfileData,
+        updateMonthlyBudget,
       }}
     >
       {children}
