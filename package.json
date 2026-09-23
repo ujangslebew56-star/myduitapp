@@ -1,0 +1,8 @@
+{
+  "name": "my-duit-dist",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "mkdir -p dist && cp -r index.html 404.html assets favicon* icon* manifest* dist/ 2>/dev/null || true"
+  }
+}
