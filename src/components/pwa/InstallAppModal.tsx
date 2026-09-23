@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
 import { useTheme } from '../../context/ThemeContext';
+import { Logo } from '../ui/Logo';
 import { 
   Download, 
   Smartphone, 
@@ -64,6 +65,30 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({ isOpen, onClos
 
         {/* Content */}
         <div className="p-5 overflow-y-auto space-y-5">
+          {/* App Identity Preview Card */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md shrink-0 bg-white border border-slate-200 dark:border-slate-700">
+              <img
+                src="/pwa-192x192.png"
+                alt="MY DUIT App Icon"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-sm">
+                  MY DUIT
+                </h3>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                  Resmi
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                Ikon ini yang akan muncul di layar utama (home screen) & laci aplikasi HP Anda.
+              </p>
+            </div>
+          </div>
+
           {/* Quick Install Action Banner if available */}
           {isInstalled ? (
             <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">

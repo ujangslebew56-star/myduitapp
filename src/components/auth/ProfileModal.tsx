@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme, ThemeMode } from '../../context/ThemeContext';
 import { COLOR_PALETTES, FONT_OPTIONS } from '../../lib/constants';
+import { Logo } from '../ui/Logo';
 import { 
   X, 
   LogOut, 
@@ -75,9 +76,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) =
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="font-bold text-slate-800 dark:text-slate-100 text-base">Profil & Kustomisasi</h2>
-          </div>
+          <Logo size="sm" showText={true} />
           <button
             type="button"
             onClick={onClose}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { Bell, Sun, Moon, RotateCw } from 'lucide-react';
+import { Logo } from '../ui/Logo';
 import { TabType } from './BottomNav';
 
 interface HeaderProps {
@@ -72,13 +73,22 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               )}
             </div>
-            {/* Active Online Indicator */}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+            {/* Active Online Indicator & App Logo Stamp */}
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full overflow-hidden bg-white ring-2 ring-white dark:ring-slate-900 shadow-xs flex items-center justify-center">
+              <img
+                src="/pwa-192x192.png"
+                alt="MY DUIT"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
 
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Selamat datang,</div>
-            <div className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1 leading-tight">
+            <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
+              <span>Selamat datang di</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">MY DUIT</span>
+            </div>
+            <div className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5 leading-tight">
               <span>Halo, {firstName}</span>
               <span className="text-base">👋</span>
             </div>

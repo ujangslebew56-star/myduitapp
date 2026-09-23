@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
+import myDuitLogoImg from '../../assets/images/my_duit_opt2_clean_large_bold.jpg';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -26,7 +27,7 @@ export const Logo: React.FC<LogoProps> = ({ size = 'md', showText = true }) => {
           className={`${currentSize.box} rounded-2xl overflow-hidden shadow-md border border-slate-100 dark:border-slate-800 bg-white flex items-center justify-center transition-all duration-300 group-hover:scale-105`}
         >
           <img
-            src="/public/pwa-512x512.png"
+            src={myDuitLogoImg}
             alt="MY DUIT Logo"
             className="w-full h-full object-cover"
           />
