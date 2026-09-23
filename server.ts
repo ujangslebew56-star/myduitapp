@@ -13,6 +13,16 @@ const PORT = 3000;
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
+// Explicitly serve public assets (manifest, pwa icons, service worker) with proper headers
+const publicDir = path.join(process.cwd(), 'public');
+app.use(express.static(publicDir, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('manifest.json') || filePath.endsWith('manifest.webmanifest')) {
+      res.setHeader('Content-Type', 'application/manifest+json');
+    }
+  }
+}));
+
 // Lazy initialize Gemini client
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI | null {
