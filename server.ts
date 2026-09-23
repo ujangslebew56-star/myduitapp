@@ -18,8 +18,13 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 const publicDir = path.join(process.cwd(), 'public');
 app.use(express.static(publicDir, {
   setHeaders: (res, filePath) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     if (filePath.endsWith('manifest.json') || filePath.endsWith('manifest.webmanifest')) {
-      res.setHeader('Content-Type', 'application/manifest+json');
+      res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
     }
   }
 }));
