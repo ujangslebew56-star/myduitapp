@@ -91,7 +91,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
+          enabled: process.env.ENABLE_PWA_DEV === 'true',
           type: 'module',
         },
       }),
